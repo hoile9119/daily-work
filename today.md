@@ -1,0 +1,3 @@
+- experirement jira mcp server -> DONE
+- deploy bnpl viet qr new changes on infra
+- 

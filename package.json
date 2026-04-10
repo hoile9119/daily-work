@@ -1,0 +1,17 @@
+{
+  "name": "daily-work-summarizer",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/parser.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Daily work summarizer — parse today.md and sync to Notion",
+  "dependencies": {
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0"
+  }
+}
