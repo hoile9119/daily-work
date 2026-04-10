@@ -947,22 +947,22 @@ test("syncPrep accepts --date override", () => {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does `notion-notion-fetch` with `collection://` URL paginate?**
    - What we know: Works for fetching all rows per Phase 2 SUMMARY recommendation
    - What's unclear: Behavior if Projects DB grows beyond ~100 rows
-   - Recommendation: Implement as documented for Phase 3; add pagination handling in v2 if needed
+   - RESOLVED: Implement as documented for Phase 3; defer pagination handling to v2. Projects DB is personal/small and won't hit Notion row limits in Phase 3 usage.
 
 2. **Exact property write format for `notion-notion-update-page`**
    - What we know: `date:Date:start` flat format worked for `create-pages` in Phase 2
    - What's unclear: Whether `update-page` uses the same flat format or nested `{date: {start: ...}}`
-   - Recommendation: Test with a single task update before implementing the full loop; document actual format in SUMMARY
+   - RESOLVED: Use `date:Date:start` flat format (same as create-pages). SKILL.md includes a runtime note to fall back to nested `{date: {start: ...}}` format if the flat format is rejected by update-page.
 
 3. **Does `notion-notion-search` support `filter` parameter?**
    - What we know: Tool description lists `query` as the parameter
    - What's unclear: Whether there's a `filter` param to scope to a specific DB
-   - Recommendation: Assume no filter; implement post-search filtering by `parent.database_id` in Claude
+   - RESOLVED: `notion-notion-search` has no filter parameter. Use post-search filtering by `parent.database_id === tasksDbId` in Claude's processing logic.
 
 ---
 
