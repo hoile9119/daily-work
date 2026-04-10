@@ -2,7 +2,23 @@
 
 ## What This Is
 
-A script-based daily work logger that reads a structured markdown file, uses AI to generate summaries from freeform notes, and syncs the results to Notion via MCP. Projects and tasks are organized in Notion with a parent-child relationship, and each task carries a status (new, in progress, done, pending).
+A Copilot CLI skill (`/daily-sync`) that reads a structured markdown file (`today.md`), uses AI to generate summaries from freeform notes, and syncs the results to Notion via MCP. Projects and tasks are organized in two related Notion databases, each task carrying status, raw notes, an AI summary, and the sync date.
+
+## Current State (v1.0 — Shipped 2026-04-10)
+
+The full pipeline is live:
+1. User fills in `today.md` with `## Project` headings and `- Task | status` bullets
+2. `/daily-sync` runs: parses → AI-summarizes → syncs to Notion
+3. Each task appears in Notion with status, raw notes, AI summary, and today's date
+
+**Notion:**
+- Projects DB: `1b13207883a648b5af65b88a68e5a77e`
+- Tasks DB: `8af3f04db594408e830da0e5bf927d48`
+- State cached at `.planning/state.json` (gitignored)
+
+**Known tech debt:**
+- Idempotent re-run (UPDATE path) implemented but not live-validated
+- 2000-char chunking in SKILL.md not exercised with large notes
 
 ## Core Value
 
@@ -10,19 +26,19 @@ Your daily work is captured once in a markdown file and automatically reflected 
 
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-(None yet — ship to validate)
+- [x] Markdown file format designed for daily work logging (project, task, status, notes)
+- [x] Parser reads `today.md` and extracts entries by project and task (40 tests)
+- [x] AI generates a concise 2–4 sentence summary from freeform notes per task
+- [x] Notion databases created: Projects (parent) → Tasks (children) with UUID relation
+- [x] Task status synced to Notion: new / in progress / done / pending
+- [x] AI summary and raw notes written to task entry in Notion
+- [x] Script is runnable on demand via `/daily-sync` Copilot CLI skill
 
-### Active
+### Next Milestone (v2.0 — TBD)
 
-- [ ] Markdown file format designed for daily work logging (project, task, status, notes)
-- [ ] Script reads the markdown file and parses entries by project and task
-- [ ] AI generates a human-readable summary from freeform notes per task
-- [ ] Notion database created from scratch: Projects (parent) → Tasks (children)
-- [ ] Task status synced to Notion: new / in progress / done / pending
-- [ ] AI summary written to task entry in Notion
-- [ ] Script is runnable on demand (not scheduled)
+_(To be defined with `/gsd-new-milestone`)_
 
 ### Out of Scope
 
@@ -34,37 +50,23 @@ Your daily work is captured once in a markdown file and automatically reflected 
 ## Context
 
 - The project lives at `/Users/Hoi.LeA1/Developer/daily-work`
-- Notion MCP is already connected in the user's Copilot CLI session
-- The markdown file (`today.md`) will be designed as part of this project
-- The tool targets the user's personal Notion workspace
+- Notion MCP is connected in the user's Copilot CLI session (session-managed OAuth)
+- The tool is a Copilot CLI skill — standalone Node.js cannot authenticate against Notion MCP
 - Notion structure: two related databases — **Projects** and **Tasks** — where tasks belong to a project
-
-## Constraints
-
-- **Integration**: Must use Notion MCP (already available in session) — no raw REST API calls
-- **Input**: Single markdown file per day; format designed to be fast to fill in
-- **AI**: Summaries generated from notes field — concise, professional tone
-- **Scope**: Personal tool — no auth layer, no multi-tenant concerns
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Markdown as input source | Simple, fast, no dependencies — user fills it in, script reads it | — Pending |
-| Notion MCP for sync | Already available in session, no API key setup needed | — Pending |
-| Projects + Tasks as separate Notion DBs | 1 project : many tasks relationship, filterable by either | — Pending |
-| AI summary per task | Notes are freeform — AI makes them readable and consistent | — Pending |
+| Copilot CLI skill (not standalone Node.js) | Notion MCP OAuth is session-managed | ✅ Validated — only path that works |
+| Markdown as input source | Simple, fast, no dependencies | ✅ Validated |
+| Notion MCP for sync | Already available in session | ✅ Validated |
+| Projects + Tasks as separate Notion DBs | 1 project : many tasks, filterable | ✅ Validated |
+| AI summary per task | Notes are freeform — AI makes them consistent | ✅ Validated |
+| Upsert keyed on project + task name | Deterministic, no external ID | ✅ Validated |
+| AI summaries batched before Notion writes | Avoids context-switching mid-sync | ✅ Validated |
 
 ## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd-transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
 1. Full review of all sections
@@ -73,4 +75,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 after initialization*
+*Last updated: 2026-04-10 — v1.0 shipped*
