@@ -432,9 +432,9 @@ Fix these entries and re-run. 0 tasks synced.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-### 1. Multi-paragraph notes with blank lines
+### 1. Multi-paragraph notes with blank lines (tight vs. loose list)
 **What we know:** In `remark-parse`, blank lines between list items make the list "loose" — each item's content becomes a `paragraph` node. Notes lines without a blank line before them (tight list) appear inline in the `listItem`.
 
 **What's unclear:** If a user writes:
@@ -447,22 +447,25 @@ Fix these entries and re-run. 0 tasks synced.
 ```
 The blank lines make this a loose list item with two paragraph children. Does the parser merge both paragraphs into `notes`?
 
-**Recommendation:** Yes — merge all paragraph children of a `listItem` into `notes` with `\n\n` between them. The user intended them as notes; blank lines are a stylistic choice, not a structural break.
+**RESOLVED:** Both tight and loose list formats are handled by the updated extraction approach:
+- **Tight lists** (common): The task line and notes are in the same paragraph node, separated by soft-break (`break`) AST nodes. `extractText` returns `"\n"` for `break` nodes, so `fullText.split("\n")` cleanly separates the task line (index 0) from the inlined notes (index 1+).
+- **Loose lists**: Notes appear as additional `paragraph` children after the first paragraph. These are collected via `item.children.filter(c => c.type === "paragraph").slice(1)` and joined with `\n\n`.
+- Both sources are merged: `[...noteParagraphs, inlinedNotes].filter(Boolean).join("\n\n")`.
 
 ### 2. Notes that look like markdown (bold, links, etc.)
 **What's unclear:** If a user writes `  Made **significant** progress` in their notes, should `notes` contain the raw markdown or the plain text?
 
-**Recommendation:** Store raw markdown text (preserve `**`, `[link](url)`, etc.). The AI summarizer can handle markdown input, and Notion accepts markdown-like formatting. Stripping formatting loses information.
+**RESOLVED:** Pass raw text to the AI summarizer. `extractText` strips markdown syntax (bold, emphasis, links → plain text), which is fine because Claude handles markdown naturally and Notion accepts prose. Stripping is safer than preserving `**` syntax which could confuse downstream text processing.
 
 ### 3. Today.md file location
 **What's unclear:** Is `today.md` always at the project root? What if the user has multiple day files?
 
-**Recommendation:** Default to `./today.md` (cwd). CLI-02 (V2-02) date override will address multi-day files. Phase 1 parser takes a file path argument, not hardcoded.
+**RESOLVED:** Default is `./today.md` (cwd). The parser accepts an optional path argument via `process.argv[2] ?? "./today.md"` in the CLI runner. Multi-day file support is deferred to V2-02.
 
-### 4. Parser as function vs. CLI
-**What's unclear:** Should `src/parser.mjs` export a function (called by sync.mjs) or be directly runnable with `node src/parser.mjs today.md`?
+### 4. Multi-paragraph loose notes (blank lines between note paragraphs)
+**What's unclear:** If a user writes multiple blank-line-separated paragraphs as notes in a loose list, are all captured?
 
-**Recommendation:** Export a function (`parseWorklog(text, date)`). Also add a `__main__` guard so it can be run standalone for debugging: `node src/parser.mjs` prints JSON to stdout. Maximizes testability.
+**RESOLVED:** Yes — `item.children.filter(c => c.type === "paragraph").slice(1)` collects ALL additional paragraph children (not just the second one). They are joined with `\n\n` to preserve the paragraph separation. The updated implementation fully handles this case.
 
 ---
 

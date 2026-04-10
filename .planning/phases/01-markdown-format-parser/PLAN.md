@@ -76,9 +76,6 @@ Write a starter template file demonstrating the full format. This is MDF-05. It 
 
 **Exact content to write:**
 ```markdown
-<!-- today.md — fill this in each day, then run: node src/sync.mjs -->
-<!-- Status values: new · in progress (or: wip) · done · pending (or: blocked) -->
-
 ## Project Name
 
 - Task name here | in progress
@@ -103,7 +100,7 @@ Write a starter template file demonstrating the full format. This is MDF-05. It 
 ```
 
 **Acceptance:**  
-File exists at `/Users/Hoi.LeA1/Developer/daily-work/today.template.md` and contains at least: one `##` heading, one `- ... | ...` task line, one indented note line, and a comment showing status variants.
+File exists at `/Users/Hoi.LeA1/Developer/daily-work/today.template.md` and contains at least: one `##` heading, one `- ... | ...` task line, and one indented note line.
 
 ---
 
@@ -191,7 +188,7 @@ import('./src/normalizeStatus.mjs').then(({ normalizeStatus, suggestStatus }) =>
 
 ---
 
-## Wave 2: Core Parser (after Wave 0 — needs npm packages installed)
+## Wave 2: Core Parser (after Wave 0 AND Wave 1 — needs npm packages + normalizeStatus.mjs)
 
 ### Task 2.1: Implement `src/parser.mjs` with `parseWorklog(text, date)` using remark-parse AST
 
@@ -287,7 +284,12 @@ function parseListItem(item, currentProject, projects, errors) {
   const firstParagraph = item.children.find(c => c.type === "paragraph");
   if (!firstParagraph) return;
 
-  const taskLine = extractText(firstParagraph);
+  // For tight lists, the task line and notes are in the SAME paragraph node, separated
+  // by a soft break (\n). Split to isolate the task line from inlined notes.
+  const fullText = extractText(firstParagraph);
+  const lines = fullText.split("\n");
+  const taskLine = lines[0];
+  const inlinedNotes = lines.slice(1).map(l => l.trim()).filter(Boolean).join("\n");
   const line = firstParagraph.position.start.line;
 
   // Check: task before any project heading
@@ -352,15 +354,16 @@ function parseListItem(item, currentProject, projects, errors) {
     return;
   }
 
-  // Collect notes: all paragraph children after the first one
-  // Handles both tight and loose list items
+  // Collect notes from two sources:
+  // 1. Inlined notes: lines after the first line in the task paragraph (tight lists)
+  // 2. Extra paragraph children after the first paragraph (loose lists — blank-line separated)
   const noteParagraphs = item.children
     .filter(c => c.type === "paragraph")
     .slice(1)
     .map(p => extractText(p));
 
-  // Also check for nested lists or blockquotes used as notes (don't crash, ignore)
-  const notes = noteParagraphs.join("\n\n");
+  // Merge: loose-list paragraphs first, then inlined tight-list notes
+  const notes = [...noteParagraphs, inlinedNotes].filter(Boolean).join("\n\n");
 
   currentProject.tasks.push({
     name: rawName,
@@ -375,8 +378,10 @@ function parseListItem(item, currentProject, projects, errors) {
 **`extractText` helper — implement exactly:**
 ```js
 // Recursively extract plain text from any remark AST node
+// Returns "\n" for soft-break nodes so tight-list notes are preserved as newlines
 function extractText(node) {
   if (node.type === "text" || node.type === "inlineCode") return node.value ?? "";
+  if (node.type === "break") return "\n";
   if (node.type === "strong" || node.type === "emphasis" || node.type === "link") {
     return (node.children ?? []).map(extractText).join("");
   }
@@ -411,28 +416,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
 
 **Acceptance:**
 ```bash
-# 1. Runs without error on the template file (after copying to today.md)
-node src/parser.mjs today.template.md
-
-# 2. Output is valid JSON
-node src/parser.mjs today.template.md | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8');JSON.parse(d);console.log('valid JSON')"
-
-# 3. Projects array is non-empty
-node src/parser.mjs today.template.md | node -e "import('/dev/stdin')" 
-# OR: node -e "import('./src/parser.mjs').then(({parseWorklog})=>{ const r=parseWorklog(require('fs').readFileSync('today.template.md','utf8')); console.assert(r.projects.length > 0); console.log('projects ok'); })"
-
-# Simpler acceptance check:
-node -e "
-import('./src/parser.mjs').then(async ({ parseWorklog }) => {
-  const { readFileSync } = await import('fs');
-  const text = readFileSync('today.template.md', 'utf8');
-  const result = parseWorklog(text);
-  console.assert(result.projects.length > 0, 'no projects parsed');
-  console.assert(Array.isArray(result.errors), 'errors must be array');
-  console.assert(result.date.match(/^\d{4}-\d{2}-\d{2}$/), 'date must be YYYY-MM-DD');
-  console.log('parser smoke test passed');
-});
-"
+node --input-type=module <<'EOF'
+import { parseWorklog } from './src/parser.mjs';
+import { readFileSync } from 'fs';
+const text = readFileSync('./today.template.md', 'utf8');
+const result = parseWorklog(text, '2025-01-15');
+console.log(JSON.stringify(result, null, 2));
+if (result.errors.length > 0) { console.error('Errors:', result.errors); process.exit(1); }
+console.log('✓ Parser works');
+EOF
 ```
 
 ---
