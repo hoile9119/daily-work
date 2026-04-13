@@ -23,14 +23,14 @@ today.md  →  parse  →  AI summarize  →  Notion sync
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/daily-work.git
+git clone https://github.com/hoile9119/daily-work.git
 cd daily-work
 npm install
 ```
 
 ### 2. Connect Notion MCP
 
-In Copilot CLI chat, type `/mcp` and follow the prompts to connect your Notion workspace.
+In Copilot CLI chat, type `/mcp` and follow the prompts to connect your Notion workspace. eg, re-auth to reconnect to Notion
 
 ### 3. Create Notion databases
 
