@@ -111,16 +111,6 @@ treat it as "not found".
 
 4b. UPDATE existing task page:
 
-Prepare the rich_text blocks for Raw Notes (chunk at 2000 chars):
-```javascript
-// Each chunk becomes a separate object in the rich_text array
-const chunks = [];
-const text = task.notes;
-for (let i = 0; i < text.length || chunks.length === 0; i += 2000) {
-  chunks.push({ type: "text", text: { content: text.slice(i, i + 2000) || "" } });
-}
-```
-
 Strip dashes from the project page ID for the relation URL:
 ```
 const cleanProjectId = projectMap[task.project].replace(/-/g, '');
@@ -132,9 +122,9 @@ Call:
 notion-notion-update-page({
   page_id: existingPageId,
   properties: {
-    "Status": { "select": { "name": task.status } },
-    "Raw Notes": { "rich_text": chunks },
-    "Summary": { "rich_text": [{ "type": "text", "text": { "content": summaryForThisTask } }] },
+    "Status": task.status,
+    "Raw Notes": task.notes,
+    "Summary": summaryForThisTask,
     "date:Date:start": manifest.date,
     "date:Date:is_datetime": 0,
     "Project": projectRelationValue
@@ -146,7 +136,7 @@ Print: `updated ${task.project} / ${task.name} — ${task.status}`
 
 4c. CREATE new task page:
 
-Use the same chunks and projectRelationValue from 4b.
+Use the same projectRelationValue from 4b.
 
 Call:
 ```
@@ -154,9 +144,9 @@ notion-notion-create-pages({
   parent: { data_source_id: "c8680903-7a3e-4b16-9449-e8c9bc7283d2" },
   properties: {
     "Name": task.name,
-    "Status": { "select": { "name": task.status } },
-    "Raw Notes": { "rich_text": chunks },
-    "Summary": { "rich_text": [{ "type": "text", "text": { "content": summaryForThisTask } }] },
+    "Status": task.status,
+    "Raw Notes": task.notes,
+    "Summary": summaryForThisTask,
     "date:Date:start": manifest.date,
     "date:Date:is_datetime": 0,
     "Project": projectRelationValue
@@ -180,11 +170,15 @@ Print: `created ${task.project} / ${task.name} — ${task.status}`
 | Field | Notion property | Write format |
 |-------|----------------|--------------|
 | Task name | Name (TITLE) | "Name": task.name |
-| Status | Status (SELECT) | "Status": { "select": { "name": "in progress" } } |
-| AI summary | Summary (RICH_TEXT) | "Summary": { "rich_text": [{ "type": "text", "text": { "content": "..." } }] } |
-| Raw notes | Raw Notes (RICH_TEXT) | "Raw Notes": { "rich_text": chunks } (chunked at 2000 chars) |
+| Status | Status (SELECT) | "Status": task.status  — plain string e.g. "new", "in progress", "done" |
+| AI summary | Summary (TEXT) | "Summary": summaryForThisTask  — plain string |
+| Raw notes | Raw Notes (TEXT) | "Raw Notes": task.notes  — plain string |
 | Date | Date (DATE) | "date:Date:start": "YYYY-MM-DD", "date:Date:is_datetime": 0 |
 | Project relation | Project (RELATION) | "Project": `["https://www.notion.so/${pageIdNoDashes}"]` |
+
+**IMPORTANT:** The Notion MCP tools (`notion-notion-create-pages` and `notion-notion-update-page`)
+only accept plain strings, numbers, or null as property values. Do NOT pass rich_text objects
+or select objects — pass the raw string directly.
 
 ## Runtime verification notes
 
